@@ -1,0 +1,12 @@
+[submodule "modules/Unity"]
+	path = modules/Unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
+[submodule "modules/atomic"]
+	path = modules/atomic
+	url = https://github.com/Prynce-Seitenfus/atomic.git
+[submodule "modules/memory_pool"]
+	path = modules/memory_pool
+	url = https://github.com/Prynce-Seitenfus/memory_pool.git
+[submodule "modules/ring_buffer"]
+	path = modules/ring_buffer
+	url = https://github.com/Prynce-Seitenfus/ring_buffer.git

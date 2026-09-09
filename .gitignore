@@ -1,0 +1,27 @@
+# Build output
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+
+# CMake artifacts
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile.cmake
+
+# Debug and cache files
+*.pdb
+*.idb
+*.dSYM/
+*.su
+.cache/
+
+# IDE configurations
+.vscode/
+.idea/
+*.swp
+*~
