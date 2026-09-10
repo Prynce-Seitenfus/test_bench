@@ -224,6 +224,46 @@ static void test_ring_buffer_wraparound(void)
     }
 }
 
+static void test_ring_buffer_bulk_transfer(void)
+{
+    RingBuffer rb;
+    uint8_t storage[16];
+    uint8_t write_data[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    uint8_t read_data[16] = { 0 };
+
+    TEST_ASSERT_TRUE(ring_buffer_init(&rb, storage, 16U));
+
+    /* NULL and zero count checks */
+    TEST_ASSERT_EQUAL_UINT(0U, ring_buffer_write(NULL, write_data, 5U));
+    TEST_ASSERT_EQUAL_UINT(0U, ring_buffer_write(&rb, NULL, 5U));
+    TEST_ASSERT_EQUAL_UINT(0U, ring_buffer_write(&rb, write_data, 0U));
+    TEST_ASSERT_EQUAL_UINT(0U, ring_buffer_read(NULL, read_data, 5U));
+    TEST_ASSERT_EQUAL_UINT(0U, ring_buffer_read(&rb, NULL, 5U));
+    TEST_ASSERT_EQUAL_UINT(0U, ring_buffer_read(&rb, read_data, 0U));
+
+    /* Bulk write 10 bytes */
+    TEST_ASSERT_EQUAL_UINT(10U, ring_buffer_write(&rb, write_data, 10U));
+    TEST_ASSERT_EQUAL_UINT(10U, ring_buffer_count(&rb));
+
+    /* Attempt to write more than available capacity (max 15 bytes, 5 left) */
+    TEST_ASSERT_EQUAL_UINT(5U, ring_buffer_write(&rb, write_data, 10U));
+    TEST_ASSERT_TRUE(ring_buffer_is_full(&rb));
+
+    /* Read 8 bytes */
+    TEST_ASSERT_EQUAL_UINT(8U, ring_buffer_read(&rb, read_data, 8U));
+    for (size_t i = 0U; i < 8U; ++i) {
+        TEST_ASSERT_EQUAL_UINT8(write_data[i], read_data[i]);
+    }
+
+    /* Wrap-around bulk write across boundary */
+    TEST_ASSERT_EQUAL_UINT(6U, ring_buffer_write(&rb, write_data, 6U));
+
+    /* Read remaining bytes */
+    size_t remaining = ring_buffer_count(&rb);
+    TEST_ASSERT_EQUAL_UINT(remaining, ring_buffer_read(&rb, read_data, remaining));
+    TEST_ASSERT_TRUE(ring_buffer_is_empty(&rb));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -234,6 +274,7 @@ int main(void)
     RUN_TEST(test_ring_buffer_boundary_full);
     RUN_TEST(test_ring_buffer_boundary_empty);
     RUN_TEST(test_ring_buffer_wraparound);
+    RUN_TEST(test_ring_buffer_bulk_transfer);
 
     return UNITY_END();
 }

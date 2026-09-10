@@ -38,10 +38,19 @@ echo ============================================================
 echo [COVERAGE] Running test suite...
 echo ============================================================
 "%~dp0build\test_ring_buffer.exe"
-if errorlevel 1 (
-    echo [ERROR] Test execution failed.
-    exit /b %errorlevel%
-)
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0build\test_atomic.exe"
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0build\test_memory_pool.exe"
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0build\test_linked_list.exe"
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0build\test_bitmap.exe"
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0build\test_crc.exe"
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0build\test_fsm.exe"
+if errorlevel 1 exit /b %errorlevel%
 
 echo.
 echo ============================================================
@@ -49,14 +58,16 @@ echo [COVERAGE] Generating gcov coverage reports...
 echo ============================================================
 if not exist "%~dp0coverage" mkdir "%~dp0coverage"
 pushd "%~dp0coverage"
-gcov -b -o "%~dp0build\CMakeFiles\test_ring_buffer.dir\modules\ring_buffer\ring_buffer.c.obj" "%~dp0modules\ring_buffer\ring_buffer.c"
-set "GCOV_ERR=%errorlevel%"
-popd
 
-if not %GCOV_ERR%==0 (
-    echo [ERROR] gcov report generation failed.
-    exit /b %GCOV_ERR%
-)
+gcov -b -o "%~dp0build\CMakeFiles\test_ring_buffer.dir\modules\ring_buffer\ring_buffer.c.obj" "%~dp0modules\ring_buffer\ring_buffer.c"
+gcov -b -o "%~dp0build\CMakeFiles\test_memory_pool.dir\modules\memory_pool\memory_pool.c.obj" "%~dp0modules\memory_pool\memory_pool.c"
+gcov -b -o "%~dp0build\CMakeFiles\test_linked_list.dir\modules\linked_list\linked_list.c.obj" "%~dp0modules\linked_list\linked_list.c"
+gcov -b -o "%~dp0build\CMakeFiles\test_bitmap.dir\modules\bitmap\bitmap.c.obj" "%~dp0modules\bitmap\bitmap.c"
+gcov -b -o "%~dp0build\CMakeFiles\test_atomic.dir\tests\test_atomic.c.obj" "%~dp0modules\atomic\atomic.h"
+gcov -b -o "%~dp0build\CMakeFiles\test_crc.dir\modules\crc\crc.c.obj" "%~dp0modules\crc\crc.c"
+gcov -b -o "%~dp0build\CMakeFiles\test_fsm.dir\modules\fsm\fsm.c.obj" "%~dp0modules\fsm\fsm.c"
+
+popd
 
 echo.
 echo ============================================================

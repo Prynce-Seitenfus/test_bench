@@ -1,23 +1,31 @@
 # Build output
 *.exe
+*.out
 *.o
 *.obj
 *.a
 *.lib
+*.ilk
+*.map
+*.exp
 
 # CMake artifacts
 build/
+bin/
+out/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 CTestTestfile.cmake
 Makefile.cmake
+compile_commands.json
 
 # Debug and cache files
 *.pdb
 *.idb
 *.dSYM/
 *.su
+*.dwo
 .cache/
 
 # IDE configurations
@@ -25,9 +33,14 @@ Makefile.cmake
 .idea/
 *.swp
 *~
+*.bak
 
 # Code coverage artifacts
 *.gcno
 *.gcda
 *.gcov
 coverage/
+
+# OS generated
+.DS_Store
+Thumbs.db

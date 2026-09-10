@@ -31,12 +31,43 @@ echo.
 echo ============================================================
 echo [RUN] Detailed Unity Test Output:
 echo ============================================================
+echo.
+echo [1/7] Running Ring Buffer tests...
 "%~dp0build\test_ring_buffer.exe"
-if errorlevel 1 (
-    echo [ERROR] Unit test executable failed.
-    exit /b %errorlevel%
-)
+if errorlevel 1 exit /b %errorlevel%
 
 echo.
-echo [SUCCESS] All tests executed and passed successfully.
+echo [2/7] Running Atomic tests...
+"%~dp0build\test_atomic.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
+echo [3/7] Running Memory Pool tests...
+"%~dp0build\test_memory_pool.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
+echo [4/7] Running Linked List tests...
+"%~dp0build\test_linked_list.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
+echo [5/7] Running Bitmap tests...
+"%~dp0build\test_bitmap.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
+echo [6/7] Running CRC tests...
+"%~dp0build\test_crc.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
+echo [7/7] Running FSM tests...
+"%~dp0build\test_fsm.exe"
+if errorlevel 1 exit /b %errorlevel%
+
+echo.
+echo ============================================================
+echo [SUCCESS] All unit test suites passed successfully.
+echo ============================================================
 endlocal
