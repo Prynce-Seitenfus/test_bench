@@ -25,3 +25,9 @@ Makefile.cmake
 .idea/
 *.swp
 *~
+
+# Code coverage artifacts
+*.gcno
+*.gcda
+*.gcov
+coverage/

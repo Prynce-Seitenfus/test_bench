@@ -47,6 +47,11 @@ To run tests:
 run.bat
 ```
 
+To run tests with code coverage analysis:
+```cmd
+coverage.bat
+```
+
 ### Option 2: CMake & CTest
 
 ```powershell
