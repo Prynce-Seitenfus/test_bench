@@ -1,0 +1,3 @@
+# Lizard complexity and parameter whitelist
+# Permitted exceptions for architectural or legacy signatures:
+fsm_init

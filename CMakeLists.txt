@@ -70,6 +70,70 @@ foreach(TARGET ${ALL_TEST_TARGETS})
     endif()
 endforeach()
 
+# --- Cyclomatic Complexity & Maintainability Gate (Lizard) ---
+option(ENABLE_LIZARD_GATE "Enforce Cyclomatic Complexity Gate (CCN <= 10, NLOC <= 75, Params <= 5)" ON)
+
+if(ENABLE_LIZARD_GATE)
+    find_program(
+        LIZARD_BIN
+        NAMES lizard lizard.exe
+        HINTS
+            "$ENV{LOCALAPPDATA}/Python/pythoncore-3.14-64/Scripts"
+            "$ENV{LOCALAPPDATA}/Programs/Python/Python*/Scripts"
+            "$ENV{APPDATA}/Python/Scripts"
+    )
+
+    if(NOT LIZARD_BIN)
+        find_program(PYTHON_BIN NAMES python3 python py)
+        if(PYTHON_BIN)
+            execute_process(
+                COMMAND ${PYTHON_BIN} -m lizard --version
+                RESULT_VARIABLE LIZARD_CHECK_RESULT
+                OUTPUT_QUIET ERROR_QUIET
+            )
+            if(LIZARD_CHECK_RESULT EQUAL 0)
+                set(LIZARD_BIN ${PYTHON_BIN} -m lizard)
+            endif()
+        endif()
+    endif()
+
+    if(NOT LIZARD_BIN)
+        message(FATAL_ERROR "Lizard code analyzer not found! Install via: pip install lizard")
+    endif()
+
+    set(COMPLEXITY_SCAN_DIRS)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    endif()
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
+        list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
+    endif()
+    if(NOT COMPLEXITY_SCAN_DIRS)
+        set(COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}")
+    endif()
+
+    add_custom_target(
+        check_complexity
+        COMMAND ${CMAKE_COMMAND} -E chdir "${CMAKE_CURRENT_SOURCE_DIR}"
+                ${LIZARD_BIN}
+                -C 10
+                -L 75
+                -a 5
+                -w
+                -W whitelizard.txt
+                -x "*/Unity/*"
+                -x "*/build/*"
+                -x "*/CMakeFiles/*"
+                ${COMPLEXITY_SCAN_DIRS}
+        COMMENT "Enforcing RTOS Quality Metrics (Max CCN: 10 | Max NLOC: 75 | Max Params: 5)..."
+        VERBATIM
+    )
+
+    foreach(TARGET ${ALL_TEST_TARGETS})
+        add_dependencies(${TARGET} check_complexity)
+    endforeach()
+endif()
+
 add_test(NAME Validacao_RingBuffer COMMAND test_ring_buffer)
 add_test(NAME Validacao_Atomic COMMAND test_atomic)
 add_test(NAME Validacao_MemoryPool COMMAND test_memory_pool)
