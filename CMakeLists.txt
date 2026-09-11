@@ -20,6 +20,32 @@ set(MODULE_INCLUDES
     modules/fsm
 )
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/sertos")
+    set(SERTOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/sertos")
+else()
+    set(SERTOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../sertos")
+endif()
+
+list(APPEND MODULE_INCLUDES 
+    ${SERTOS_DIR}/inc 
+    ${SERTOS_DIR}/port
+)
+
+set(SERTOS_SOURCES
+    ${SERTOS_DIR}/src/sertos_task.c
+    ${SERTOS_DIR}/src/sertos_scheduler.c
+    ${SERTOS_DIR}/src/sertos_sem.c
+    ${SERTOS_DIR}/src/sertos_mutex.c
+    ${SERTOS_DIR}/src/sertos_queue.c
+    ${SERTOS_DIR}/src/sertos_timer.c
+    ${SERTOS_DIR}/port/windows/port_windows.c
+    modules/ring_buffer/ring_buffer.c
+    modules/linked_list/linked_list.c
+    modules/bitmap/bitmap.c
+    modules/memory_pool/memory_pool.c
+    modules/crc/crc.c
+)
+
 # --- Test Executables ---
 # 1. Ring Buffer
 add_executable(test_ring_buffer tests/test_ring_buffer.c modules/ring_buffer/ring_buffer.c)
@@ -56,7 +82,57 @@ add_executable(test_fsm tests/test_fsm.c modules/fsm/fsm.c)
 target_link_libraries(test_fsm PRIVATE unity)
 target_include_directories(test_fsm PRIVATE ${MODULE_INCLUDES})
 
-set(ALL_TEST_TARGETS test_ring_buffer test_atomic test_memory_pool test_linked_list test_bitmap test_crc test_fsm)
+# 8. SertOS Task Management
+add_executable(test_sertos_task tests/test_sertos_task.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_task PRIVATE unity)
+target_include_directories(test_sertos_task PRIVATE ${MODULE_INCLUDES})
+
+# 9. SertOS Preemptive Scheduler Core
+add_executable(test_sertos_scheduler tests/test_sertos_scheduler.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_scheduler PRIVATE unity)
+target_include_directories(test_sertos_scheduler PRIVATE ${MODULE_INCLUDES})
+
+# 10. SertOS Semaphore Primitive
+add_executable(test_sertos_sem tests/test_sertos_sem.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_sem PRIVATE unity)
+target_include_directories(test_sertos_sem PRIVATE ${MODULE_INCLUDES})
+
+# 11. SertOS Mutex (PIP) Primitive
+add_executable(test_sertos_mutex tests/test_sertos_mutex.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_mutex PRIVATE unity)
+target_include_directories(test_sertos_mutex PRIVATE ${MODULE_INCLUDES})
+
+# 12. SertOS Message Queue Primitive
+add_executable(test_sertos_queue tests/test_sertos_queue.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_queue PRIVATE unity)
+target_include_directories(test_sertos_queue PRIVATE ${MODULE_INCLUDES})
+
+# 13. SertOS Software Timers Primitive
+add_executable(test_sertos_timer tests/test_sertos_timer.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_timer PRIVATE unity)
+target_include_directories(test_sertos_timer PRIVATE ${MODULE_INCLUDES})
+
+# 14. SertOS Execution Benchmarks (Latency, Jitter, Footprint)
+add_executable(test_sertos_benchmark tests/test_sertos_benchmark.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_benchmark PRIVATE unity)
+target_include_directories(test_sertos_benchmark PRIVATE ${MODULE_INCLUDES})
+
+set(ALL_TEST_TARGETS 
+    test_ring_buffer 
+    test_atomic 
+    test_memory_pool 
+    test_linked_list 
+    test_bitmap 
+    test_crc 
+    test_fsm
+    test_sertos_task
+    test_sertos_scheduler
+    test_sertos_sem
+    test_sertos_mutex
+    test_sertos_queue
+    test_sertos_timer
+    test_sertos_benchmark
+)
 
 foreach(TARGET ${ALL_TEST_TARGETS})
     target_compile_options(${TARGET} PRIVATE -Wall -Wextra -pedantic)
@@ -108,6 +184,12 @@ if(ENABLE_LIZARD_GATE)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
         list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
     endif()
+    if(EXISTS "${SERTOS_DIR}/src")
+        list(APPEND COMPLEXITY_SCAN_DIRS "${SERTOS_DIR}/src")
+    endif()
+    if(EXISTS "${SERTOS_DIR}/port")
+        list(APPEND COMPLEXITY_SCAN_DIRS "${SERTOS_DIR}/port")
+    endif()
     if(NOT COMPLEXITY_SCAN_DIRS)
         set(COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}")
     endif()
@@ -141,3 +223,10 @@ add_test(NAME Validacao_LinkedList COMMAND test_linked_list)
 add_test(NAME Validacao_Bitmap COMMAND test_bitmap)
 add_test(NAME Validacao_CRC COMMAND test_crc)
 add_test(NAME Validacao_FSM COMMAND test_fsm)
+add_test(NAME Validacao_SertOSTask COMMAND test_sertos_task)
+add_test(NAME Validacao_SertOSScheduler COMMAND test_sertos_scheduler)
+add_test(NAME Validacao_SertOSSem COMMAND test_sertos_sem)
+add_test(NAME Validacao_SertOSMutex COMMAND test_sertos_mutex)
+add_test(NAME Validacao_SertOSQueue COMMAND test_sertos_queue)
+add_test(NAME Validacao_SertOSTimer COMMAND test_sertos_timer)
+add_test(NAME Validacao_SertOSBenchmark COMMAND test_sertos_benchmark)

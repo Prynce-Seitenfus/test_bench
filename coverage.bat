@@ -1,5 +1,7 @@
 @echo off
-setlocal enabledelayedexpansion
+set "SCRIPT_DIR=%~dp0"
+if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
+pushd "%SCRIPT_DIR%"
 
 :: Ensure CMake and MinGW (gcc/gcov) are available in PATH
 where cmake.exe >nul 2>nul
@@ -14,9 +16,10 @@ if errorlevel 1 (
 echo ============================================================
 echo [COVERAGE] Configuring CMake with coverage enabled...
 echo ============================================================
-cmake -B "%~dp0build" -G "MinGW Makefiles" -DENABLE_COVERAGE=ON
+cmake -B build -S . -G "MinGW Makefiles" -DENABLE_COVERAGE=ON
 if errorlevel 1 (
     echo [ERROR] CMake configuration failed.
+    popd
     exit /b %errorlevel%
 )
 
@@ -24,55 +27,74 @@ echo.
 echo ============================================================
 echo [COVERAGE] Building test suite with coverage instrumentation...
 echo ============================================================
-cmake --build "%~dp0build"
+cmake --build build
 if errorlevel 1 (
     echo [ERROR] Compilation failed.
+    popd
     exit /b %errorlevel%
 )
 
 :: Clear stale execution counters before test run
-del /s /q "%~dp0build\*.gcda" >nul 2>nul
+del /s /q "build\*.gcda" >nul 2>nul
 
 echo.
 echo ============================================================
 echo [COVERAGE] Running test suite...
 echo ============================================================
-"%~dp0build\test_ring_buffer.exe"
-if errorlevel 1 exit /b %errorlevel%
-"%~dp0build\test_atomic.exe"
-if errorlevel 1 exit /b %errorlevel%
-"%~dp0build\test_memory_pool.exe"
-if errorlevel 1 exit /b %errorlevel%
-"%~dp0build\test_linked_list.exe"
-if errorlevel 1 exit /b %errorlevel%
-"%~dp0build\test_bitmap.exe"
-if errorlevel 1 exit /b %errorlevel%
-"%~dp0build\test_crc.exe"
-if errorlevel 1 exit /b %errorlevel%
-"%~dp0build\test_fsm.exe"
-if errorlevel 1 exit /b %errorlevel%
+build\test_ring_buffer.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_atomic.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_memory_pool.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_linked_list.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_bitmap.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_crc.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_fsm.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_task.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_scheduler.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_sem.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_mutex.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_queue.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_timer.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
 
 echo.
 echo ============================================================
 echo [COVERAGE] Generating gcov coverage reports...
 echo ============================================================
-if not exist "%~dp0coverage" mkdir "%~dp0coverage"
-pushd "%~dp0coverage"
+if not exist "coverage" mkdir "coverage"
+pushd "coverage"
 
-gcov -b -o "%~dp0build\CMakeFiles\test_ring_buffer.dir\modules\ring_buffer\ring_buffer.c.obj" "%~dp0modules\ring_buffer\ring_buffer.c"
-gcov -b -o "%~dp0build\CMakeFiles\test_memory_pool.dir\modules\memory_pool\memory_pool.c.obj" "%~dp0modules\memory_pool\memory_pool.c"
-gcov -b -o "%~dp0build\CMakeFiles\test_linked_list.dir\modules\linked_list\linked_list.c.obj" "%~dp0modules\linked_list\linked_list.c"
-gcov -b -o "%~dp0build\CMakeFiles\test_bitmap.dir\modules\bitmap\bitmap.c.obj" "%~dp0modules\bitmap\bitmap.c"
-gcov -b -o "%~dp0build\CMakeFiles\test_atomic.dir\tests\test_atomic.c.obj" "%~dp0modules\atomic\atomic.h"
-gcov -b -o "%~dp0build\CMakeFiles\test_crc.dir\modules\crc\crc.c.obj" "%~dp0modules\crc\crc.c"
-gcov -b -o "%~dp0build\CMakeFiles\test_fsm.dir\modules\fsm\fsm.c.obj" "%~dp0modules\fsm\fsm.c"
+gcov -b -o "..\build\CMakeFiles\test_ring_buffer.dir\modules\ring_buffer\ring_buffer.c.obj" "..\modules\ring_buffer\ring_buffer.c"
+gcov -b -o "..\build\CMakeFiles\test_memory_pool.dir\modules\memory_pool\memory_pool.c.obj" "..\modules\memory_pool\memory_pool.c"
+gcov -b -o "..\build\CMakeFiles\test_linked_list.dir\modules\linked_list\linked_list.c.obj" "..\modules\linked_list\linked_list.c"
+gcov -b -o "..\build\CMakeFiles\test_bitmap.dir\modules\bitmap\bitmap.c.obj" "..\modules\bitmap\bitmap.c"
+gcov -b -o "..\build\CMakeFiles\test_atomic.dir\tests\test_atomic.c.obj" "..\modules\atomic\atomic.h"
+gcov -b -o "..\build\CMakeFiles\test_crc.dir\modules\crc\crc.c.obj" "..\modules\crc\crc.c"
+gcov -b -o "..\build\CMakeFiles\test_fsm.dir\modules\fsm\fsm.c.obj" "..\modules\fsm\fsm.c"
+gcov -b -o "..\build\CMakeFiles\test_sertos_task.dir\C_\Users\P&P\Documents\github\sertos\src\sertos_task.c.obj" "..\..\sertos\src\sertos_task.c"
+gcov -b -o "..\build\CMakeFiles\test_sertos_scheduler.dir\C_\Users\P&P\Documents\github\sertos\src\sertos_scheduler.c.obj" "..\..\sertos\src\sertos_scheduler.c"
+gcov -b -o "..\build\CMakeFiles\test_sertos_sem.dir\C_\Users\P&P\Documents\github\sertos\src\sertos_sem.c.obj" "..\..\sertos\src\sertos_sem.c"
+gcov -b -o "..\build\CMakeFiles\test_sertos_mutex.dir\C_\Users\P&P\Documents\github\sertos\src\sertos_mutex.c.obj" "..\..\sertos\src\sertos_mutex.c"
+gcov -b -o "..\build\CMakeFiles\test_sertos_queue.dir\C_\Users\P&P\Documents\github\sertos\src\sertos_queue.c.obj" "..\..\sertos\src\sertos_queue.c"
+gcov -b -o "..\build\CMakeFiles\test_sertos_timer.dir\C_\Users\P&P\Documents\github\sertos\src\sertos_timer.c.obj" "..\..\sertos\src\sertos_timer.c"
 
 popd
 
 echo.
 echo ============================================================
 echo [SUCCESS] Coverage analysis complete.
-set "COV_DIR=%~dp0coverage\"
-echo Reports generated in: !COV_DIR!
+echo Reports generated in: coverage\
 echo ============================================================
+popd
 endlocal
