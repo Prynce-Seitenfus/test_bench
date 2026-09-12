@@ -20,9 +20,11 @@ static void test_timer_cb(SertosTimerHandle handle, void* param)
     s_callback_count++;
 }
 
+static uint8_t s_test_mem_pool[64U * 1024U] __attribute__((aligned(8)));
+
 void setUp(void)
 {
-    memory_pool_init();
+    (void)memory_pool_init(s_test_mem_pool, sizeof(s_test_mem_pool));
     sertos_timer_init();
     (void)memset(&s_timer, 0, sizeof(s_timer));
     s_timer_handle = NULL;

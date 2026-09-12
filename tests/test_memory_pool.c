@@ -4,15 +4,37 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define TEST_POOL_SIZE (64U * 1024U)
+static uint8_t s_test_pool_storage[TEST_POOL_SIZE] __attribute__((aligned(8)));
+
 void setUp(void)
 {
     /* Reset and initialize memory pool before each test case */
-    memory_pool_init();
+    (void)memory_pool_init(s_test_pool_storage, sizeof(s_test_pool_storage));
 }
 
 void tearDown(void)
 {
     /* Global teardown, no persistent host OS cleanup needed */
+}
+
+static void test_memory_pool_init_null_or_invalid_size(void)
+{
+    uint8_t tiny_buf[8];
+    TEST_ASSERT_FALSE(memory_pool_init(NULL, 1024U));
+    TEST_ASSERT_FALSE(memory_pool_init(s_test_pool_storage, 0U));
+    TEST_ASSERT_FALSE(memory_pool_init(tiny_buf, sizeof(tiny_buf)));
+}
+
+static void test_memory_pool_init_unaligned_buffer(void)
+{
+    uint8_t local_buf[1024] __attribute__((aligned(8)));
+    TEST_ASSERT_TRUE(memory_pool_init(&local_buf[1], sizeof(local_buf) - 1U));
+
+    void* ptr = memory_pool_malloc(32U);
+    TEST_ASSERT_NOT_NULL(ptr);
+    TEST_ASSERT_EQUAL_UINT(0U, ((uintptr_t)ptr) % 8U);
+    memory_pool_free(ptr);
 }
 
 static void test_memory_pool_malloc_basic(void)
@@ -41,8 +63,8 @@ static void test_memory_pool_malloc_zero_size(void)
 
 static void test_memory_pool_malloc_exhaustion(void)
 {
-    /* Attempt to allocate more memory than the pool capacity (1 MB) */
-    void* ptr = memory_pool_malloc(2U * 1024U * 1024U);
+    /* Attempt to allocate more memory than the pool capacity */
+    void* ptr = memory_pool_malloc(TEST_POOL_SIZE + 1024U);
     TEST_ASSERT_NULL(ptr);
 }
 
@@ -162,7 +184,7 @@ static void test_memory_pool_realloc_exhaustion(void)
     TEST_ASSERT_NOT_NULL(ptr);
 
     /* Requesting size exceeding pool should fail and return NULL */
-    void* result = memory_pool_realloc(ptr, 2U * 1024U * 1024U);
+    void* result = memory_pool_realloc(ptr, TEST_POOL_SIZE + 1024U);
     TEST_ASSERT_NULL(result);
 
     memory_pool_free(ptr);
@@ -194,6 +216,8 @@ int main(void)
 {
     UNITY_BEGIN();
 
+    RUN_TEST(test_memory_pool_init_null_or_invalid_size);
+    RUN_TEST(test_memory_pool_init_unaligned_buffer);
     RUN_TEST(test_memory_pool_malloc_basic);
     RUN_TEST(test_memory_pool_malloc_zero_size);
     RUN_TEST(test_memory_pool_malloc_exhaustion);

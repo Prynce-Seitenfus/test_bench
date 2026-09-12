@@ -38,9 +38,11 @@ static void bench_dummy_entry(void* param)
     (void)param;
 }
 
+static uint8_t s_test_mem_pool[64U * 1024U] __attribute__((aligned(8)));
+
 void setUp(void)
 {
-    memory_pool_init();
+    (void)memory_pool_init(s_test_mem_pool, sizeof(s_test_mem_pool));
     (void)sertos_scheduler_init();
     (void)memset(s_bench_stacks, 0, sizeof(s_bench_stacks));
     (void)memset(s_bench_tcbs, 0, sizeof(s_bench_tcbs));
