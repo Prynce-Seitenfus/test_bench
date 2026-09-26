@@ -12,6 +12,7 @@
 #include "sertos_port.h"
 #include "memory_pool.h"
 #include <string.h>
+#include <windows.h>
 
 #define STACK_SIZE  (512U)
 
@@ -26,10 +27,45 @@ static SertosTaskControlBlock s_tcb_c;
 static SertosTaskHandle s_handle_a;
 static SertosTaskHandle s_handle_b;
 static SertosTaskHandle s_handle_c;
+static SertosTaskControlBlock* s_idle_tcb;
+static LONG s_delay_status;
+static LONG s_delay_elapsed_ticks;
+static LONG s_delay_task_resumed;
 
 static void task_entry_dummy(void* param)
 {
     (void)param;
+}
+
+static void task_entry_delay_test(void* param)
+{
+    SertosTick start_tick;
+    SertosStatus delay_status;
+
+    (void)param;
+    start_tick = sertos_scheduler_get_tick_count();
+    delay_status = sertos_scheduler_delay(3U);
+
+    InterlockedExchange(&s_delay_status, (LONG)delay_status);
+    InterlockedExchange(&s_delay_elapsed_ticks,
+                        (LONG)(sertos_scheduler_get_tick_count() - start_tick));
+    InterlockedExchange(&s_delay_task_resumed,
+                        ((sertos_scheduler_get_current_tcb() == &s_tcb_a) &&
+                         (s_tcb_a.state == SERTOS_TASK_STATE_RUNNING)) ? 1L : 0L);
+
+    sertos_scheduler_stop();
+    (void)Sleep(INFINITE);
+}
+
+static DWORD WINAPI scheduler_stop_watchdog(LPVOID param)
+{
+    HANDLE cancel_event = (HANDLE)param;
+
+    if (WaitForSingleObject(cancel_event, 5000U) == WAIT_TIMEOUT) {
+        sertos_scheduler_stop();
+    }
+
+    return 0U;
 }
 
 static uint8_t s_test_mem_pool[64U * 1024U] __attribute__((aligned(8)));
@@ -38,6 +74,10 @@ void setUp(void)
 {
     (void)memory_pool_init(s_test_mem_pool, sizeof(s_test_mem_pool));
     (void)sertos_scheduler_init();
+    s_idle_tcb = sertos_scheduler_select_next_task();
+    s_handle_a = NULL;
+    s_handle_b = NULL;
+    s_handle_c = NULL;
 
     (void)memset(s_stack_a, 0, sizeof(s_stack_a));
     (void)memset(s_stack_b, 0, sizeof(s_stack_b));
@@ -46,6 +86,22 @@ void setUp(void)
 
 void tearDown(void)
 {
+    if (sertos_scheduler_is_running()) {
+        sertos_scheduler_stop();
+    }
+
+    if ((s_handle_a != NULL) && (s_handle_a->state != SERTOS_TASK_STATE_TERMINATED)) {
+        (void)sertos_task_delete(s_handle_a);
+    }
+    if ((s_handle_b != NULL) && (s_handle_b->state != SERTOS_TASK_STATE_TERMINATED)) {
+        (void)sertos_task_delete(s_handle_b);
+    }
+    if ((s_handle_c != NULL) && (s_handle_c->state != SERTOS_TASK_STATE_TERMINATED)) {
+        (void)sertos_task_delete(s_handle_c);
+    }
+    if ((s_idle_tcb != NULL) && (s_idle_tcb->state != SERTOS_TASK_STATE_TERMINATED)) {
+        (void)sertos_task_delete(s_idle_tcb);
+    }
 }
 
 void test_scheduler_init_creates_idle_task(void)
@@ -176,10 +232,12 @@ void test_scheduler_lock_and_nesting(void)
 void test_scheduler_delay_and_tick_wakeup(void)
 {
     SertosTaskConfig cfg_a;
-    SertosTaskControlBlock* selected;
+    HANDLE watchdog_cancel_event;
+    HANDLE watchdog_thread;
+    DWORD watchdog_result;
 
     cfg_a.name = "Sleeper";
-    cfg_a.entry_func = task_entry_dummy;
+    cfg_a.entry_func = task_entry_delay_test;
     cfg_a.param = NULL;
     cfg_a.priority = 10U;
     cfg_a.stack_buffer = s_stack_a;
@@ -187,37 +245,31 @@ void test_scheduler_delay_and_tick_wakeup(void)
 
     (void)sertos_task_create_static(&cfg_a, &s_tcb_a, &s_handle_a);
 
-    /* Make Sleeper the running task */
-    sertos_scheduler_set_current_tcb(&s_tcb_a);
-    s_tcb_a.state = SERTOS_TASK_STATE_RUNNING;
+    s_delay_status = (LONG)SERTOS_STATUS_ERROR_NOT_INITIALIZED;
+    s_delay_elapsed_ticks = 0L;
+    s_delay_task_resumed = 0L;
+    watchdog_cancel_event = CreateEvent(NULL, TRUE, FALSE, NULL);
+    TEST_ASSERT_NOT_NULL(watchdog_cancel_event);
 
-    /* Start scheduler */
+    watchdog_thread = CreateThread(NULL, 0U, scheduler_stop_watchdog,
+                                   watchdog_cancel_event, 0U, NULL);
+    if (watchdog_thread == NULL) {
+        (void)CloseHandle(watchdog_cancel_event);
+        TEST_FAIL_MESSAGE("Could not create scheduler stop watchdog");
+        return;
+    }
+
     sertos_scheduler_start();
-    TEST_ASSERT_TRUE(sertos_scheduler_is_running());
 
-    /* Delay task for 3 ticks */
-    (void)sertos_scheduler_delay(3U);
-    TEST_ASSERT_EQUAL(SERTOS_TASK_STATE_BLOCKED, s_tcb_a.state);
+    (void)SetEvent(watchdog_cancel_event);
+    watchdog_result = WaitForSingleObject(watchdog_thread, INFINITE);
+    (void)CloseHandle(watchdog_thread);
+    (void)CloseHandle(watchdog_cancel_event);
 
-    /* While delayed, Idle task should be selected (no other tasks) */
-    selected = sertos_scheduler_select_next_task();
-    TEST_ASSERT_EQUAL_UINT8(0U, selected->priority);
-
-    /* Tick 1 */
-    sertos_scheduler_tick();
-    TEST_ASSERT_EQUAL_UINT32(1U, sertos_scheduler_get_tick_count());
-    TEST_ASSERT_EQUAL(SERTOS_TASK_STATE_BLOCKED, s_tcb_a.state);
-
-    /* Tick 2 */
-    sertos_scheduler_tick();
-    TEST_ASSERT_EQUAL_UINT32(2U, sertos_scheduler_get_tick_count());
-    TEST_ASSERT_EQUAL(SERTOS_TASK_STATE_BLOCKED, s_tcb_a.state);
-
-    /* Tick 3: Delay expires, Sleeper preempts Idle and transitions to RUNNING */
-    sertos_scheduler_tick();
-    TEST_ASSERT_EQUAL_UINT32(3U, sertos_scheduler_get_tick_count());
-    TEST_ASSERT_EQUAL(SERTOS_TASK_STATE_RUNNING, s_tcb_a.state);
-    TEST_ASSERT_EQUAL_PTR(&s_tcb_a, sertos_scheduler_get_current_tcb());
+    TEST_ASSERT_EQUAL_UINT32(WAIT_OBJECT_0, watchdog_result);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_OK, (SertosStatus)InterlockedCompareExchange(&s_delay_status, 0L, 0L));
+    TEST_ASSERT_TRUE(InterlockedCompareExchange(&s_delay_elapsed_ticks, 0L, 0L) >= 3L);
+    TEST_ASSERT_EQUAL_INT(1, InterlockedCompareExchange(&s_delay_task_resumed, 0L, 0L));
 }
 
 void test_scheduler_parameter_validation_and_edge_cases(void)

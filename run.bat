@@ -8,9 +8,9 @@ where ctest.exe >nul 2>nul
 if errorlevel 1 (
     set "PATH=C:\Program Files\CMake\bin;%PATH%"
 )
-where gcc.exe >nul 2>nul
-if errorlevel 1 (
-    set "PATH=C:\mingw64\bin;%PATH%"
+set "MINGW_BIN=C:\toolchains\mingw64\13.2.0\bin"
+if exist "%MINGW_BIN%\gcc.exe" (
+    set "PATH=%MINGW_BIN%;%PATH%"
 )
 
 :: Build automatically if binary does not exist
@@ -21,6 +21,30 @@ if not exist "build\test_ring_buffer.exe" (
         popd
         exit /b %errorlevel%
     )
+)
+
+:: Filter argument (e.g. run.bat profiler)
+set "TEST_FILTER=%~1"
+
+if not "%TEST_FILTER%"=="" (
+    echo ============================================================
+    echo [RUN] Running filtered test: %TEST_FILTER% via CTest...
+    echo ============================================================
+    ctest --test-dir build -R "%TEST_FILTER%" --output-on-failure
+    if errorlevel 1 (
+        ctest --test-dir build -R "Validation_%TEST_FILTER%" --output-on-failure
+    )
+    echo.
+    echo ============================================================
+    echo [RUN] Running %TEST_FILTER% binary directly...
+    echo ============================================================
+    if exist "build\test_%TEST_FILTER%.exe" (
+        build\test_%TEST_FILTER%.exe
+    ) else if exist "build\%TEST_FILTER%.exe" (
+        build\%TEST_FILTER%.exe
+    )
+    popd
+    exit /b %errorlevel%
 )
 
 echo ============================================================
@@ -103,8 +127,13 @@ build\test_sertos_timer.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 
 echo.
-echo [14/14] Running SertOS Benchmark tests...
+echo [14/15] Running SertOS Benchmark tests...
 build\test_sertos_benchmark.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+
+echo.
+echo [15/15] Running Profiler tests...
+build\test_profiler.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 
 echo.

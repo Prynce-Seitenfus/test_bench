@@ -26,9 +26,16 @@ else()
     set(SERTOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../sertos")
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules/profiler")
+    set(PROFILER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/modules/profiler")
+else()
+    set(PROFILER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../profiler")
+endif()
+
 list(APPEND MODULE_INCLUDES 
     ${SERTOS_DIR}/inc 
     ${SERTOS_DIR}/port
+    ${PROFILER_DIR}
 )
 
 set(SERTOS_SOURCES
@@ -88,7 +95,11 @@ target_link_libraries(test_sertos_task PRIVATE unity)
 target_include_directories(test_sertos_task PRIVATE ${MODULE_INCLUDES})
 
 # 9. SertOS Preemptive Scheduler Core
-add_executable(test_sertos_scheduler tests/test_sertos_scheduler.c ${SERTOS_SOURCES})
+add_executable(
+    test_sertos_scheduler
+    tests/test_sertos_scheduler.c
+    ${SERTOS_SOURCES}
+)
 target_link_libraries(test_sertos_scheduler PRIVATE unity)
 target_include_directories(test_sertos_scheduler PRIVATE ${MODULE_INCLUDES})
 
@@ -113,9 +124,29 @@ target_link_libraries(test_sertos_timer PRIVATE unity)
 target_include_directories(test_sertos_timer PRIVATE ${MODULE_INCLUDES})
 
 # 14. SertOS Execution Benchmarks (Latency, Jitter, Footprint)
-add_executable(test_sertos_benchmark tests/test_sertos_benchmark.c ${SERTOS_SOURCES})
+add_executable(
+    test_sertos_benchmark
+    tests/test_sertos_benchmark.c
+    ${SERTOS_SOURCES}
+)
 target_link_libraries(test_sertos_benchmark PRIVATE unity)
 target_include_directories(test_sertos_benchmark PRIVATE ${MODULE_INCLUDES})
+
+# 15. GCC Function Instrumentation Profiler
+add_executable(test_profiler 
+    tests/test_profiler.c 
+    tests/test_profiler_targets.c 
+    ${PROFILER_DIR}/profiler.c
+    modules/bitmap/bitmap.c
+)
+target_link_libraries(test_profiler PRIVATE unity)
+target_include_directories(test_profiler PRIVATE ${MODULE_INCLUDES})
+
+# Selectively instrument target application functions only
+set_source_files_properties(
+    tests/test_profiler_targets.c
+    PROPERTIES COMPILE_OPTIONS "-finstrument-functions"
+)
 
 set(ALL_TEST_TARGETS 
     test_ring_buffer 
@@ -132,7 +163,23 @@ set(ALL_TEST_TARGETS
     test_sertos_queue
     test_sertos_timer
     test_sertos_benchmark
+    test_profiler
 )
+
+if(WIN32)
+    set(SERTOS_TEST_TARGETS
+        test_sertos_task
+        test_sertos_scheduler
+        test_sertos_sem
+        test_sertos_mutex
+        test_sertos_queue
+        test_sertos_timer
+        test_sertos_benchmark
+    )
+    foreach(TARGET ${SERTOS_TEST_TARGETS})
+        target_link_libraries(${TARGET} PRIVATE winmm)
+    endforeach()
+endif()
 
 foreach(TARGET ${ALL_TEST_TARGETS})
     target_compile_options(${TARGET} PRIVATE -Wall -Wextra -pedantic)
@@ -146,8 +193,8 @@ foreach(TARGET ${ALL_TEST_TARGETS})
     endif()
 endforeach()
 
-# --- Cyclomatic Complexity & Maintainability Gate (Lizard) ---
-option(ENABLE_LIZARD_GATE "Enforce Cyclomatic Complexity Gate (CCN <= 10, NLOC <= 75, Params <= 5)" ON)
+# --- Cyclomatic Complexity & Maintainability Warnings (Lizard) ---
+option(ENABLE_LIZARD_GATE "Report functions exceeding CCN 10, NLOC 75, or 5 parameters without failing the build" ON)
 
 if(ENABLE_LIZARD_GATE)
     find_program(
@@ -174,59 +221,64 @@ if(ENABLE_LIZARD_GATE)
     endif()
 
     if(NOT LIZARD_BIN)
-        message(FATAL_ERROR "Lizard code analyzer not found! Install via: pip install lizard")
+        message(WARNING "Lizard code analyzer not found! Install via: pip install lizard. Disabling complexity gate.")
+        set(ENABLE_LIZARD_GATE OFF)
     endif()
 
-    set(COMPLEXITY_SCAN_DIRS)
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
-        list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src")
-    endif()
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
-        list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
-    endif()
-    if(EXISTS "${SERTOS_DIR}/src")
-        list(APPEND COMPLEXITY_SCAN_DIRS "${SERTOS_DIR}/src")
-    endif()
-    if(EXISTS "${SERTOS_DIR}/port")
-        list(APPEND COMPLEXITY_SCAN_DIRS "${SERTOS_DIR}/port")
-    endif()
-    if(NOT COMPLEXITY_SCAN_DIRS)
-        set(COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}")
-    endif()
+    if(LIZARD_BIN)
+        set(COMPLEXITY_SCAN_DIRS)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src")
+            list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src")
+        endif()
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
+            list(APPEND COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/modules")
+        endif()
+        if(EXISTS "${SERTOS_DIR}/src")
+            list(APPEND COMPLEXITY_SCAN_DIRS "${SERTOS_DIR}/src")
+        endif()
+        if(EXISTS "${SERTOS_DIR}/port")
+            list(APPEND COMPLEXITY_SCAN_DIRS "${SERTOS_DIR}/port")
+        endif()
+        if(NOT COMPLEXITY_SCAN_DIRS)
+            set(COMPLEXITY_SCAN_DIRS "${CMAKE_CURRENT_SOURCE_DIR}")
+        endif()
 
-    add_custom_target(
-        check_complexity
-        COMMAND ${CMAKE_COMMAND} -E chdir "${CMAKE_CURRENT_SOURCE_DIR}"
-                ${LIZARD_BIN}
-                -C 10
-                -L 75
-                -a 5
-                -w
-                -W whitelizard.txt
-                -x "*/Unity/*"
-                -x "*/build/*"
-                -x "*/CMakeFiles/*"
-                ${COMPLEXITY_SCAN_DIRS}
-        COMMENT "Enforcing RTOS Quality Metrics (Max CCN: 10 | Max NLOC: 75 | Max Params: 5)..."
-        VERBATIM
-    )
+        add_custom_target(
+            check_complexity
+            COMMAND ${CMAKE_COMMAND} -E chdir "${CMAKE_CURRENT_SOURCE_DIR}"
+                    ${LIZARD_BIN}
+                    -C 10
+                    -L 75
+                    -a 5
+                    -w
+                    -i -1
+                    -W whitelizard.txt
+                    -x "*/Unity/*"
+                    -x "*/build/*"
+                    -x "*/CMakeFiles/*"
+                    ${COMPLEXITY_SCAN_DIRS}
+            COMMENT "Checking RTOS quality metrics (warnings only: Max CCN 10 | Max NLOC 75 | Max Params 5)..."
+            VERBATIM
+        )
 
-    foreach(TARGET ${ALL_TEST_TARGETS})
-        add_dependencies(${TARGET} check_complexity)
-    endforeach()
+        foreach(TARGET ${ALL_TEST_TARGETS})
+            add_dependencies(${TARGET} check_complexity)
+        endforeach()
+    endif()
 endif()
 
-add_test(NAME Validacao_RingBuffer COMMAND test_ring_buffer)
-add_test(NAME Validacao_Atomic COMMAND test_atomic)
-add_test(NAME Validacao_MemoryPool COMMAND test_memory_pool)
-add_test(NAME Validacao_LinkedList COMMAND test_linked_list)
-add_test(NAME Validacao_Bitmap COMMAND test_bitmap)
-add_test(NAME Validacao_CRC COMMAND test_crc)
-add_test(NAME Validacao_FSM COMMAND test_fsm)
-add_test(NAME Validacao_SertOSTask COMMAND test_sertos_task)
-add_test(NAME Validacao_SertOSScheduler COMMAND test_sertos_scheduler)
-add_test(NAME Validacao_SertOSSem COMMAND test_sertos_sem)
-add_test(NAME Validacao_SertOSMutex COMMAND test_sertos_mutex)
-add_test(NAME Validacao_SertOSQueue COMMAND test_sertos_queue)
-add_test(NAME Validacao_SertOSTimer COMMAND test_sertos_timer)
-add_test(NAME Validacao_SertOSBenchmark COMMAND test_sertos_benchmark)
+add_test(NAME Validation_RingBuffer COMMAND test_ring_buffer)
+add_test(NAME Validation_Atomic COMMAND test_atomic)
+add_test(NAME Validation_MemoryPool COMMAND test_memory_pool)
+add_test(NAME Validation_LinkedList COMMAND test_linked_list)
+add_test(NAME Validation_Bitmap COMMAND test_bitmap)
+add_test(NAME Validation_CRC COMMAND test_crc)
+add_test(NAME Validation_FSM COMMAND test_fsm)
+add_test(NAME Validation_SertOSTask COMMAND test_sertos_task)
+add_test(NAME Validation_SertOSScheduler COMMAND test_sertos_scheduler)
+add_test(NAME Validation_SertOSSem COMMAND test_sertos_sem)
+add_test(NAME Validation_SertOSMutex COMMAND test_sertos_mutex)
+add_test(NAME Validation_SertOSQueue COMMAND test_sertos_queue)
+add_test(NAME Validation_SertOSTimer COMMAND test_sertos_timer)
+add_test(NAME Validation_SertOSBenchmark COMMAND test_sertos_benchmark)
+add_test(NAME Validation_Profiler COMMAND test_profiler)

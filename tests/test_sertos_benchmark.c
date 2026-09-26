@@ -2,7 +2,7 @@
  * @file test_sertos_benchmark.c
  * @brief Performance, footprint, and execution jitter benchmark suite for SertOS.
  *
- * Measures context switch cycles, O(1) scheduling determinism, semaphore signaling jitter,
+ * Measures scheduler switch bookkeeping, O(1) scheduling determinism, semaphore signaling jitter,
  * mutex priority inheritance protocol overhead, queue throughput, and memory footprint.
  */
 
@@ -23,6 +23,7 @@
 static uint8_t s_bench_stacks[BENCH_TASK_COUNT][BENCH_STACK_SIZE] __attribute__((aligned(8)));
 static SertosTaskControlBlock s_bench_tcbs[BENCH_TASK_COUNT];
 static SertosTaskHandle s_bench_handles[BENCH_TASK_COUNT];
+static SertosTaskControlBlock* s_idle_tcb;
 
 static inline uint64_t get_cpu_cycles(void)
 {
@@ -44,12 +45,25 @@ void setUp(void)
 {
     (void)memory_pool_init(s_test_mem_pool, sizeof(s_test_mem_pool));
     (void)sertos_scheduler_init();
+    s_idle_tcb = sertos_scheduler_select_next_task();
     (void)memset(s_bench_stacks, 0, sizeof(s_bench_stacks));
     (void)memset(s_bench_tcbs, 0, sizeof(s_bench_tcbs));
+    (void)memset(s_bench_handles, 0, sizeof(s_bench_handles));
 }
 
 void tearDown(void)
 {
+    uint32_t i;
+
+    for (i = 0U; i < BENCH_TASK_COUNT; i++) {
+        if ((s_bench_handles[i] != NULL) &&
+            (s_bench_handles[i]->state != SERTOS_TASK_STATE_TERMINATED)) {
+            (void)sertos_task_delete(s_bench_handles[i]);
+        }
+    }
+    if ((s_idle_tcb != NULL) && (s_idle_tcb->state != SERTOS_TASK_STATE_TERMINATED)) {
+        (void)sertos_task_delete(s_idle_tcb);
+    }
 }
 
 void test_benchmark_memory_footprint(void)
@@ -82,7 +96,7 @@ void test_benchmark_memory_footprint(void)
     TEST_ASSERT_EQUAL_UINT32(0U, (uint32_t)(stack_addr % 8U));
 }
 
-void test_benchmark_context_switch_latency_and_o1(void)
+void test_benchmark_scheduler_switch_latency_and_o1(void)
 {
     SertosTaskConfig cfg;
     uint64_t start_cycles;
@@ -104,8 +118,7 @@ void test_benchmark_context_switch_latency_and_o1(void)
                           sertos_task_create_static(&cfg, &s_bench_tcbs[i], &s_bench_handles[i]));
     }
 
-    sertos_scheduler_start();
-
+    /* Measure ready-task selection and scheduler bookkeeping without launching host threads. */
     for (i = 0U; i < BENCH_ITERATIONS; i++) {
         start_cycles = get_cpu_cycles();
         (void)sertos_scheduler_perform_switch();
@@ -229,7 +242,7 @@ int main(void)
     UNITY_BEGIN();
 
     RUN_TEST(test_benchmark_memory_footprint);
-    RUN_TEST(test_benchmark_context_switch_latency_and_o1);
+    RUN_TEST(test_benchmark_scheduler_switch_latency_and_o1);
     RUN_TEST(test_benchmark_sem_signaling_and_jitter);
     RUN_TEST(test_benchmark_mutex_pip_overhead);
     RUN_TEST(test_benchmark_queue_fifo_throughput);

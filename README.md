@@ -38,7 +38,7 @@ test_bench/
     ├── test_sertos_mutex.c     # PIP mutex, recursion & anti-priority inversion
     ├── test_sertos_queue.c     # Multi-task FIFO message queue (ring_buffer)
     ├── test_sertos_timer.c     # Monotonic software timers (one-shot & periodic)
-    └── test_sertos_benchmark.c # Context switch latency & O(1) scaling benchmarks
+    └── test_sertos_benchmark.c # Scheduler switch bookkeeping & O(1) scaling benchmarks
 ```
 
 ---
@@ -60,7 +60,7 @@ test_bench/
 | **`sertos_mutex`** | `tests/test_sertos_mutex.c` | Priority Inheritance Protocol (PIP), recursive re-entrancy, ownership validation, chained elevation restore. |
 | **`sertos_queue`** | `tests/test_sertos_queue.c` | Multi-task thread-safe FIFO message queue backed by `ring_buffer`, timeout blocking, ISR enqueue/dequeue. |
 | **`sertos_timer`** | `tests/test_sertos_timer.c` | Monotonic software timers (one-shot & periodic), period updates, tick dispatching. |
-| **`sertos_benchmark`** | `tests/test_sertos_benchmark.c` | Context switch latency, $O(1)$ schedule time independence from task count, PIP overhead, FIFO throughput. |
+| **`sertos_benchmark`** | `tests/test_sertos_benchmark.c` | Scheduler switch bookkeeping latency, $O(1)$ schedule time independence from task count, PIP overhead, FIFO throughput. |
 
 ---
 
@@ -73,7 +73,12 @@ To build (with automated Lizard complexity gating):
 build.bat
 ```
 
-To run all 14 test suites:
+To clean the CMake build directory before rebuilding:
+```cmd
+build.bat --clean
+```
+
+To run all 15 test suites:
 ```cmd
 run.bat
 ```
