@@ -136,11 +136,17 @@ target_include_directories(test_sertos_benchmark PRIVATE ${MODULE_INCLUDES})
 add_executable(test_profiler 
     tests/test_profiler.c 
     tests/test_profiler_targets.c 
+    tests/profiler_port_stub.c
     ${PROFILER_DIR}/profiler.c
     modules/bitmap/bitmap.c
 )
 target_link_libraries(test_profiler PRIVATE unity)
 target_include_directories(test_profiler PRIVATE ${MODULE_INCLUDES})
+
+# Cortex-M SysTick clock-to-reload validation
+add_executable(test_sertos_systick tests/test_sertos_systick.c)
+target_link_libraries(test_sertos_systick PRIVATE unity)
+target_include_directories(test_sertos_systick PRIVATE "${SERTOS_DIR}/port/arm")
 
 # Selectively instrument target application functions only
 set_source_files_properties(
@@ -164,6 +170,7 @@ set(ALL_TEST_TARGETS
     test_sertos_timer
     test_sertos_benchmark
     test_profiler
+    test_sertos_systick
 )
 
 if(WIN32)
@@ -282,3 +289,4 @@ add_test(NAME Validation_SertOSQueue COMMAND test_sertos_queue)
 add_test(NAME Validation_SertOSTimer COMMAND test_sertos_timer)
 add_test(NAME Validation_SertOSBenchmark COMMAND test_sertos_benchmark)
 add_test(NAME Validation_Profiler COMMAND test_profiler)
+add_test(NAME Validation_SertOSSysTick COMMAND test_sertos_systick)
