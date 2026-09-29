@@ -327,6 +327,46 @@ void test_scheduler_runtime_configuration(void)
     TEST_ASSERT_TRUE(sertos_scheduler_is_time_slicing_enabled());
 }
 
+static void test_scheduler_time_conversions(void)
+{
+    SertosConfig cfg = {
+        .tick_rate_hz = 500U,
+        .enable_time_slicing = true,
+        .idle_task_stack = NULL,
+        .idle_task_stack_size = 0U,
+        .tick_hook = NULL,
+        .idle_hook = NULL
+    };
+
+    /* At 1000 Hz */
+    (void)sertos_scheduler_init();
+    TEST_ASSERT_EQUAL_UINT32(10U, (uint32_t)SERTOS_MS_TO_TICKS(10U));
+    TEST_ASSERT_EQUAL_UINT32(1U, (uint32_t)SERTOS_MS_TO_TICKS(1U));
+    TEST_ASSERT_EQUAL_UINT32(0U, (uint32_t)SERTOS_MS_TO_TICKS(0U));
+    TEST_ASSERT_EQUAL_UINT32(10U, SERTOS_TICKS_TO_MS(10U));
+    TEST_ASSERT_EQUAL_UINT32(1000U, SERTOS_TICKS_TO_MS(1000U));
+
+    /* At 500 Hz (1 tick = 2 ms) */
+    (void)sertos_scheduler_init_with_config(&cfg);
+    TEST_ASSERT_EQUAL_UINT32(500U, sertos_scheduler_get_tick_rate_hz());
+    /* 1 ms ceiling -> (1 * 500 + 999) / 1000 = 1499 / 1000 = 1 tick */
+    TEST_ASSERT_EQUAL_UINT32(1U, (uint32_t)SERTOS_MS_TO_TICKS(1U));
+    /* 2 ms -> (2 * 500 + 999) / 1000 = 1999 / 1000 = 1 tick */
+    TEST_ASSERT_EQUAL_UINT32(1U, (uint32_t)SERTOS_MS_TO_TICKS(2U));
+    /* 3 ms -> (3 * 500 + 999) / 1000 = 2499 / 1000 = 2 ticks */
+    TEST_ASSERT_EQUAL_UINT32(2U, (uint32_t)SERTOS_MS_TO_TICKS(3U));
+    /* 10 ms -> 5 ticks */
+    TEST_ASSERT_EQUAL_UINT32(5U, (uint32_t)SERTOS_MS_TO_TICKS(10U));
+    /* Ticks to ms */
+    TEST_ASSERT_EQUAL_UINT32(10U, SERTOS_TICKS_TO_MS(5U));
+
+    /* Test delay_ms validation when scheduler is not running */
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_ERROR_NOT_INITIALIZED, sertos_scheduler_delay_ms(50U));
+
+    /* Re-init with defaults */
+    (void)sertos_scheduler_init();
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -337,5 +377,6 @@ int main(void)
     RUN_TEST(test_scheduler_delay_and_tick_wakeup);
     RUN_TEST(test_scheduler_parameter_validation_and_edge_cases);
     RUN_TEST(test_scheduler_runtime_configuration);
+    RUN_TEST(test_scheduler_time_conversions);
     return UNITY_END();
 }
