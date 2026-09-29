@@ -290,6 +290,43 @@ void test_scheduler_parameter_validation_and_edge_cases(void)
     sertos_scheduler_reschedule();
 }
 
+static uint32_t s_custom_tick_hook_count = 0U;
+static void custom_tick_hook(void)
+{
+    s_custom_tick_hook_count++;
+}
+
+static uint8_t s_custom_idle_stack[1024U] __attribute__((aligned(8)));
+
+void test_scheduler_runtime_configuration(void)
+{
+    SertosConfig cfg;
+    SertosStatus status;
+
+    cfg.tick_rate_hz = 500U;
+    cfg.enable_time_slicing = false;
+    cfg.idle_task_stack = s_custom_idle_stack;
+    cfg.idle_task_stack_size = sizeof(s_custom_idle_stack);
+    cfg.tick_hook = custom_tick_hook;
+    cfg.idle_hook = NULL;
+
+    s_custom_tick_hook_count = 0U;
+    status = sertos_scheduler_init_with_config(&cfg);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_OK, status);
+    TEST_ASSERT_EQUAL_UINT32(500U, sertos_scheduler_get_tick_rate_hz());
+    TEST_ASSERT_FALSE(sertos_scheduler_is_time_slicing_enabled());
+
+    /* Verify tick hook is invoked */
+    sertos_scheduler_tick();
+    TEST_ASSERT_EQUAL_UINT32(1U, s_custom_tick_hook_count);
+
+    /* Re-init with defaults */
+    status = sertos_scheduler_init();
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_OK, status);
+    TEST_ASSERT_EQUAL_UINT32(SERTOS_CONFIG_TICK_RATE_HZ, sertos_scheduler_get_tick_rate_hz());
+    TEST_ASSERT_TRUE(sertos_scheduler_is_time_slicing_enabled());
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -299,5 +336,6 @@ int main(void)
     RUN_TEST(test_scheduler_lock_and_nesting);
     RUN_TEST(test_scheduler_delay_and_tick_wakeup);
     RUN_TEST(test_scheduler_parameter_validation_and_edge_cases);
+    RUN_TEST(test_scheduler_runtime_configuration);
     return UNITY_END();
 }
