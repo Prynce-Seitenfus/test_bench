@@ -367,6 +367,44 @@ static void test_scheduler_time_conversions(void)
     (void)sertos_scheduler_init();
 }
 
+void test_scheduler_delay_until_validation_and_wraparound(void)
+{
+    SertosTick wake;
+    SertosStatus status;
+
+    /* NULL last_wake_time pointer is rejected. */
+    status = sertos_scheduler_delay_until(NULL, 10U);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_ERROR_NULL_PTR, status);
+
+    /* Zero period is rejected. */
+    wake = sertos_scheduler_get_tick_count();
+    status = sertos_scheduler_delay_until(&wake, 0U);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_ERROR_INVALID_PARAM, status);
+
+    /* Deadline still in the future: the call decides to block. With the
+       scheduler not running the underlying delay reports NOT_INITIALIZED, but
+       the next wake deadline must still advance by exactly one period. */
+    wake = sertos_scheduler_get_tick_count();
+    status = sertos_scheduler_delay_until(&wake, 5U);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_ERROR_NOT_INITIALIZED, status);
+    TEST_ASSERT_EQUAL_UINT32(5U, wake);
+
+    /* Overrun: the deadline has already elapsed under wrap-safe modular
+       comparison (now - wake = 16 >= period), so the call yields without
+       blocking and returns OK while realigning the deadline by one period. */
+    wake = 0xFFFFFFF0U;
+    status = sertos_scheduler_delay_until(&wake, 10U);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_OK, status);
+    TEST_ASSERT_EQUAL_UINT32(0xFFFFFFFAU, wake);
+
+    /* Deadline advancement wraps modulo 2^32 without misbehaving
+       (now - wake = 6 < period, so the block path is taken). */
+    wake = 0xFFFFFFFAU;
+    status = sertos_scheduler_delay_until(&wake, 10U);
+    TEST_ASSERT_EQUAL(SERTOS_STATUS_ERROR_NOT_INITIALIZED, status);
+    TEST_ASSERT_EQUAL_UINT32(4U, wake);
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -378,5 +416,6 @@ int main(void)
     RUN_TEST(test_scheduler_parameter_validation_and_edge_cases);
     RUN_TEST(test_scheduler_runtime_configuration);
     RUN_TEST(test_scheduler_time_conversions);
+    RUN_TEST(test_scheduler_delay_until_validation_and_wraparound);
     return UNITY_END();
 }
