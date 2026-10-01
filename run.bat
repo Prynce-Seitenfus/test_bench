@@ -137,6 +137,11 @@ build\test_profiler.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 
 echo.
+echo [16/16] Running SertOS Runtime Statistics tests...
+build\test_sertos_stats.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+
+echo.
 echo ============================================================
 echo [SUCCESS] All unit test suites passed successfully.
 echo ============================================================

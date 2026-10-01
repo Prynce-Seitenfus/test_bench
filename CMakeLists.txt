@@ -41,6 +41,7 @@ list(APPEND MODULE_INCLUDES
 set(SERTOS_SOURCES
     ${SERTOS_DIR}/src/sertos_task.c
     ${SERTOS_DIR}/src/sertos_scheduler.c
+    ${SERTOS_DIR}/src/sertos_stats.c
     ${SERTOS_DIR}/src/sertos_sem.c
     ${SERTOS_DIR}/src/sertos_mutex.c
     ${SERTOS_DIR}/src/sertos_queue.c
@@ -148,6 +149,15 @@ add_executable(test_sertos_systick tests/test_sertos_systick.c)
 target_link_libraries(test_sertos_systick PRIVATE unity)
 target_include_directories(test_sertos_systick PRIVATE "${SERTOS_DIR}/port/arm")
 
+# 16. SertOS Runtime Statistics (Telemetry)
+add_executable(test_sertos_stats tests/test_sertos_stats.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_stats PRIVATE unity)
+target_include_directories(test_sertos_stats PRIVATE ${MODULE_INCLUDES})
+# The test supplies a deterministic fake sertos_port_runtime_counter() that
+# overrides the host port's default; allow the duplicate and take the first
+# (test) definition listed in the link line.
+target_link_options(test_sertos_stats PRIVATE -Wl,--allow-multiple-definition)
+
 # Selectively instrument target application functions only
 set_source_files_properties(
     tests/test_profiler_targets.c
@@ -171,6 +181,7 @@ set(ALL_TEST_TARGETS
     test_sertos_benchmark
     test_profiler
     test_sertos_systick
+    test_sertos_stats
 )
 
 if(WIN32)
@@ -182,6 +193,7 @@ if(WIN32)
         test_sertos_queue
         test_sertos_timer
         test_sertos_benchmark
+        test_sertos_stats
     )
     foreach(TARGET ${SERTOS_TEST_TARGETS})
         target_link_libraries(${TARGET} PRIVATE winmm)
@@ -290,3 +302,4 @@ add_test(NAME Validation_SertOSTimer COMMAND test_sertos_timer)
 add_test(NAME Validation_SertOSBenchmark COMMAND test_sertos_benchmark)
 add_test(NAME Validation_Profiler COMMAND test_profiler)
 add_test(NAME Validation_SertOSSysTick COMMAND test_sertos_systick)
+add_test(NAME Validation_SertOSStats COMMAND test_sertos_stats)
