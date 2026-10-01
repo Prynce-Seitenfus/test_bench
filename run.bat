@@ -137,8 +137,13 @@ build\test_profiler.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 
 echo.
-echo [16/16] Running SertOS Runtime Statistics tests...
+echo [16/17] Running SertOS Runtime Statistics tests...
 build\test_sertos_stats.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
+
+echo.
+echo [17/17] Running SertOS Stream Buffer tests...
+build\test_sertos_stream_buffer.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 
 echo.

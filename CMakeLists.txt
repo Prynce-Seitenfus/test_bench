@@ -45,6 +45,7 @@ set(SERTOS_SOURCES
     ${SERTOS_DIR}/src/sertos_sem.c
     ${SERTOS_DIR}/src/sertos_mutex.c
     ${SERTOS_DIR}/src/sertos_queue.c
+    ${SERTOS_DIR}/src/sertos_stream_buffer.c
     ${SERTOS_DIR}/src/sertos_timer.c
     ${SERTOS_DIR}/port/windows/port_windows.c
     modules/ring_buffer/ring_buffer.c
@@ -158,6 +159,11 @@ target_include_directories(test_sertos_stats PRIVATE ${MODULE_INCLUDES})
 # (test) definition listed in the link line.
 target_link_options(test_sertos_stats PRIVATE -Wl,--allow-multiple-definition)
 
+# 17. SertOS Stream Buffer Primitive
+add_executable(test_sertos_stream_buffer tests/test_sertos_stream_buffer.c ${SERTOS_SOURCES})
+target_link_libraries(test_sertos_stream_buffer PRIVATE unity)
+target_include_directories(test_sertos_stream_buffer PRIVATE ${MODULE_INCLUDES})
+
 # Selectively instrument target application functions only
 set_source_files_properties(
     tests/test_profiler_targets.c
@@ -177,6 +183,7 @@ set(ALL_TEST_TARGETS
     test_sertos_sem
     test_sertos_mutex
     test_sertos_queue
+    test_sertos_stream_buffer
     test_sertos_timer
     test_sertos_benchmark
     test_profiler
@@ -191,6 +198,7 @@ if(WIN32)
         test_sertos_sem
         test_sertos_mutex
         test_sertos_queue
+        test_sertos_stream_buffer
         test_sertos_timer
         test_sertos_benchmark
         test_sertos_stats
@@ -298,6 +306,7 @@ add_test(NAME Validation_SertOSScheduler COMMAND test_sertos_scheduler)
 add_test(NAME Validation_SertOSSem COMMAND test_sertos_sem)
 add_test(NAME Validation_SertOSMutex COMMAND test_sertos_mutex)
 add_test(NAME Validation_SertOSQueue COMMAND test_sertos_queue)
+add_test(NAME Validation_SertOSStreamBuffer COMMAND test_sertos_stream_buffer)
 add_test(NAME Validation_SertOSTimer COMMAND test_sertos_timer)
 add_test(NAME Validation_SertOSBenchmark COMMAND test_sertos_benchmark)
 add_test(NAME Validation_Profiler COMMAND test_profiler)

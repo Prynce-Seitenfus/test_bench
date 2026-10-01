@@ -37,6 +37,7 @@ test_bench/
     ├── test_sertos_sem.c       # Binary & counting semaphores with ISR signaling
     ├── test_sertos_mutex.c     # PIP mutex, recursion & anti-priority inversion
     ├── test_sertos_queue.c     # Multi-task FIFO message queue (ring_buffer)
+    ├── test_sertos_stream_buffer.c # SPSC byte stream buffer with trigger levels
     ├── test_sertos_timer.c     # Monotonic software timers (one-shot & periodic)
     └── test_sertos_benchmark.c # Scheduler switch bookkeeping & O(1) scaling benchmarks
 ```
@@ -59,6 +60,7 @@ test_bench/
 | **`sertos_sem`** | `tests/test_sertos_sem.c` | Counting & binary semaphores, unblocking highest priority, ISR take/give signaling without blocking. |
 | **`sertos_mutex`** | `tests/test_sertos_mutex.c` | Priority Inheritance Protocol (PIP), recursive re-entrancy, ownership validation, chained elevation restore. |
 | **`sertos_queue`** | `tests/test_sertos_queue.c` | Multi-task thread-safe FIFO message queue backed by `ring_buffer`, timeout blocking, ISR enqueue/dequeue. |
+| **`sertos_stream_buffer`** | `tests/test_sertos_stream_buffer.c` | SPSC byte stream buffer, configurable trigger level unblocking, circular wrap-around, ISR non-blocking IO. |
 | **`sertos_timer`** | `tests/test_sertos_timer.c` | Monotonic software timers (one-shot & periodic), period updates, tick dispatching. |
 | **`sertos_benchmark`** | `tests/test_sertos_benchmark.c` | Scheduler switch bookkeeping latency, $O(1)$ schedule time independence from task count, PIP overhead, FIFO throughput. |
 

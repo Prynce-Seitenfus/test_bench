@@ -12,6 +12,7 @@
 #include "sertos_sem.h"
 #include "sertos_mutex.h"
 #include "sertos_queue.h"
+#include "sertos_stream_buffer.h"
 #include "sertos_timer.h"
 #include "memory_pool.h"
 #include <string.h>
@@ -72,20 +73,23 @@ void test_benchmark_memory_footprint(void)
     size_t mutex_size;
     size_t sem_size;
     size_t queue_size;
+    size_t stream_buf_size;
     size_t timer_size;
     uintptr_t stack_addr;
 
-    tcb_size   = sizeof(SertosTaskControlBlock);
-    mutex_size = sizeof(SertosMutex);
-    sem_size   = sizeof(SertosSemaphore);
-    queue_size = sizeof(SertosQueue);
-    timer_size = sizeof(SertosTimer);
+    tcb_size        = sizeof(SertosTaskControlBlock);
+    mutex_size      = sizeof(SertosMutex);
+    sem_size        = sizeof(SertosSemaphore);
+    queue_size      = sizeof(SertosQueue);
+    stream_buf_size = sizeof(SertosStreamBuffer);
+    timer_size      = sizeof(SertosTimer);
 
     /* Verify memory structures are compact and fit within embedded bounds */
     TEST_ASSERT_TRUE(tcb_size <= 256U);
     TEST_ASSERT_TRUE(mutex_size <= 128U);
     TEST_ASSERT_TRUE(sem_size <= 64U);
     TEST_ASSERT_TRUE(queue_size <= 128U);
+    TEST_ASSERT_TRUE(stream_buf_size <= 128U);
     TEST_ASSERT_TRUE(timer_size <= 64U);
 
     /* Stack pointer MUST be the first field in TCB (offset 0) for assembly dereference */

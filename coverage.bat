@@ -77,6 +77,8 @@ build\test_sertos_mutex.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 build\test_sertos_queue.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
+build\test_sertos_stream_buffer.exe
+if errorlevel 1 ( popd & exit /b %errorlevel% )
 build\test_sertos_timer.exe
 if errorlevel 1 ( popd & exit /b %errorlevel% )
 
@@ -112,6 +114,8 @@ if errorlevel 1 goto :coverage_failed
 call :gcov_sertos test_sertos_mutex sertos_mutex.c "%SERTOS_SOURCE_DIR%\src\sertos_mutex.c"
 if errorlevel 1 goto :coverage_failed
 call :gcov_sertos test_sertos_queue sertos_queue.c "%SERTOS_SOURCE_DIR%\src\sertos_queue.c"
+if errorlevel 1 goto :coverage_failed
+call :gcov_sertos test_sertos_stream_buffer sertos_stream_buffer.c "%SERTOS_SOURCE_DIR%\src\sertos_stream_buffer.c"
 if errorlevel 1 goto :coverage_failed
 call :gcov_sertos test_sertos_timer sertos_timer.c "%SERTOS_SOURCE_DIR%\src\sertos_timer.c"
 if errorlevel 1 goto :coverage_failed
